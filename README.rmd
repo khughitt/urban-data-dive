@@ -24,6 +24,9 @@ Load data
 
 ### Data Sources
 
+1. State legislature counts [FiscalNote](https://www.fiscalnote.com/)
+2. .... (http://www.americanbar.org/groups/domestic_violence/resources/statutory_summary_charts.html)
+
 ```{r setup}
 library(dplyr)
 library(ggplot2)
@@ -34,22 +37,33 @@ library(maps)
 # load state data
 dat = map_data('state')
 
+# state abbreviations
+states = data.frame(state.name, state.center, state.abb)
+states$state.name = tolower(states$state.name)
+dat = merge(dat, states, by.x='region', by.y='state.name')
+
 # load state dv legislature data
 state_dv_legislature = tbl_df(read.csv('input/state_dv_legislature.csv')) %>%
     filter(region != 'us congress')
 
-# state abbreviations
-states = data.frame(state.center, state.abb)
+# intimate partnet domestic violence
+int_partner_violence = read.csv('input/intimate_partner_dv.csv')
+dat = tbl_df(merge(dat, int_partner_violence, by.x='state.abb', 'region'))
+
+dat = dat %>% mutate(intimate_partner_12mo_dv_ratio=(intimate_partner_12mo_dv /
+                     intimate_partner_12mo_dv_total))
 
 # combine data
 dat = merge(dat, state_dv_legislature, by='region')
 dat = arrange(dat, order)
 
-plt = ggplot(data=dat, aes(x = long, y = lat, group = group))
-plt = plt + geom_polygon(aes(fill=introduced))
-plt = plt + geom_path(colour = 'gray', linestyle = 2)
-plt = plt + coord_map()
-plt = plt + geom_text(data=states, aes(x=x, y=y, label=state.abb, group = NULL, color='white'), size = 2)
-plt = plt + theme_bw()
+plt = ggplot(data=dat, aes(x = long, y = lat, group = group)) +
+        geom_polygon(aes(fill=introduced)) +
+        geom_path(colour = 'gray', linestyle = 2) +
+        coord_map() +
+        geom_text(data=states, 
+                  aes(x=x, y=y, label=state.abb, group=NULL, color='white'), size=4) +
+        theme_bw() +
+        ggtitle("Number of laws relating to DV proprosed per state")
 plt
 ```
